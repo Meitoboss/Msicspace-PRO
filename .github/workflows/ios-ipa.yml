@@ -42,7 +42,6 @@ jobs:
 
       - name: Build (no code signing)
         run: |
-          set -o pipefail
           xcodebuild \
             -workspace ios/RiMusic.xcworkspace \
             -scheme RiMusic \
@@ -51,8 +50,13 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build | tee build.log | tail -n 40
-
+            build > build.log 2>&1 || {
+              echo "=================== ERRORS ==================="
+              grep -E "error:|\*\* BUILD FAILED|fatal error|Undefined symbol|ld: " build.log | sort -u | head -60
+              echo "=================== LAST 40 LINES ==================="
+              tail -n 40 build.log
+              exit 1
+            }
       - name: Package .ipa
         run: |
           APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -n 1)
